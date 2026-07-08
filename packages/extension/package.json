@@ -1,0 +1,23 @@
+{
+  "name": "@browcy/extension",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsup",
+    "watch": "tsup --watch",
+    "test": "vitest run"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@browcy/shared": "*",
+    "@types/chrome": "^0.2.2",
+    "@types/jsdom": "^28.0.3",
+    "jsdom": "^29.1.1",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3"
+  }
+}
