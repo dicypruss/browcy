@@ -1,16 +1,19 @@
 {
-  "name": "@browcy/server",
-  "version": "1.0.0",
-  "description": "",
+  "name": "browcy-mcp",
+  "version": "0.0.1",
+  "description": "An MCP Server for controlling Chrome browsers via DevTools Protocol",
   "main": "index.js",
   "type": "module",
+  "bin": {
+    "browcy-mcp": "./dist/index.js"
+  },
   "scripts": {
     "build": "tsup",
     "start": "node dist/index.js",
     "test": "vitest run"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["mcp", "browser", "automation", "chrome", "devtools", "ai"],
+  "author": "dicypruss",
   "license": "ISC",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

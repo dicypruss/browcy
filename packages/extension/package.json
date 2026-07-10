@@ -1,11 +1,12 @@
 {
   "name": "@browcy/extension",
-  "version": "1.0.0",
-  "description": "",
+  "version": "0.0.1",
+  "description": "Chrome extension for Browcy MCP",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "build": "tsup",
+    "build:zip": "npm run build && node scripts/pack.js",
     "watch": "tsup --watch",
     "test": "vitest run"
   },
@@ -16,7 +17,9 @@
     "@browcy/shared": "*",
     "@types/chrome": "^0.2.2",
     "@types/jsdom": "^28.0.3",
+    "archiver": "^8.0.0",
     "jsdom": "^29.1.1",
+    "sharp": "^0.35.3",
     "tsup": "^8.5.1",
     "typescript": "^6.0.3"
   }
