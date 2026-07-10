@@ -1,7 +1,8 @@
 import {
-  NavigateSchema, ClickSchema, TypeSchema, PressKeySchema, SnapshotSchema, ReadPageSchema, CreateTabSchema, SwitchTabSchema, CloseTabSchema, ScreenshotSchema, GoBackSchema, GoForwardSchema, EvaluateJsSchema, ScrollSchema, WaitForSchema, GetConsoleLogsSchema
+  NavigateSchema, ClickSchema, TypeSchema, PressKeySchema, SnapshotSchema, ReadPageSchema, CreateTabSchema, SwitchTabSchema, CloseTabSchema, ScreenshotSchema, GoBackSchema, GoForwardSchema, EvaluateJsSchema, ScrollSchema, WaitForSchema, GetConsoleLogsSchema, GetLayoutInfoSchema
 } from "./schemas.js";
 import type { BrowserRequest } from '@browcy/shared';
+import * as fs from 'fs';
 
 export async function handleToolCall(
   name: string, 
@@ -73,6 +74,12 @@ export async function handleToolCall(
       const dataUrl = await sendToBrowser({ action: "screenshot", payload } as BrowserRequest);
       const [prefix, b64] = dataUrl.split(',');
       const mime = prefix.split(':')[1].split(';')[0];
+      
+      if (payload.savePath) {
+        fs.writeFileSync(payload.savePath, b64, 'base64');
+        return { content: [{ type: "text", text: `Screenshot saved successfully to ${payload.savePath}` }] };
+      }
+      
       return { content: [{ type: "image", data: b64, mimeType: mime }] };
     }
 
@@ -108,8 +115,14 @@ export async function handleToolCall(
 
     if (name === "browser_get_console_logs") {
       const payload = args ? GetConsoleLogsSchema.parse(args) : {};
-      const logs = await sendToBrowser({ action: "get_console_logs", payload } as BrowserRequest);
-      return { content: [{ type: "text", text: JSON.stringify(logs, null, 2) }] };
+      const result = await sendToBrowser({ action: "get_console_logs", payload } as BrowserRequest);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    }
+
+    if (name === "browser_layout_info") {
+      const payload = args ? GetLayoutInfoSchema.parse(args) : {};
+      const result = await sendToBrowser({ action: "layout_info", payload } as BrowserRequest);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     }
 
     throw new Error(`Unknown tool: ${name}`);

@@ -8,7 +8,7 @@ import {
 import { WebSocketServer, WebSocket } from "ws";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { NavigateSchema, ClickSchema, TypeSchema, PressKeySchema, SnapshotSchema, ReadPageSchema, CreateTabSchema, SwitchTabSchema, CloseTabSchema, ScreenshotSchema, GoBackSchema, GoForwardSchema, EvaluateJsSchema, ScrollSchema, WaitForSchema, GetConsoleLogsSchema } from "./schemas.js";
+import { NavigateSchema, ClickSchema, TypeSchema, PressKeySchema, SnapshotSchema, ReadPageSchema, CreateTabSchema, SwitchTabSchema, CloseTabSchema, ScreenshotSchema, GoBackSchema, GoForwardSchema, EvaluateJsSchema, ScrollSchema, WaitForSchema, GetConsoleLogsSchema, GetLayoutInfoSchema } from "./schemas.js";
 
 import http from "http";
 import { verifyWebSocketOrigin, verifyIpcHeader } from "./security.js";
@@ -236,6 +236,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         name: "browser_get_console_logs",
         description: "Retrieve intercepted console logs and errors from the page",
         inputSchema: zodToJsonSchema(GetConsoleLogsSchema),
+      },
+      {
+        name: "browser_layout_info",
+        description: "Get layout metrics including full scrollable content size and viewport size. Useful for determining how to capture chunks of very long pages. When calculating chunks, always include a 10-20% vertical overlap to prevent losing content at the seams.",
+        inputSchema: zodToJsonSchema(GetLayoutInfoSchema),
       },
     ],
   };

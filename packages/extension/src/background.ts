@@ -72,15 +72,117 @@ const actionHandlers: Record<string, ActionHandler> = {
       ws?.send(JSON.stringify({ id, error: "No active tab" }));
     }
   },
+  layout_info: async (payload, id, tabId) => {
+    let targetTabId = tabId;
+    if (!targetTabId) targetTabId = (await chrome.tabs.query({ active: true, currentWindow: true }))[0]?.id;
+    if (targetTabId) {
+      chrome.debugger.attach({ tabId: targetTabId }, "1.3", () => {
+        if (chrome.runtime.lastError) {
+          ws?.send(JSON.stringify({ id, error: chrome.runtime.lastError.message }));
+          return;
+        }
+        chrome.debugger.sendCommand({ tabId: targetTabId }, "Page.getLayoutMetrics", {}, (metrics: any) => {
+          chrome.debugger.detach({ tabId: targetTabId });
+          if (chrome.runtime.lastError) {
+            ws?.send(JSON.stringify({ id, error: chrome.runtime.lastError.message }));
+          } else {
+            ws?.send(JSON.stringify({ id, result: metrics }));
+          }
+        });
+      });
+    }
+  },
   screenshot: async (payload, id, tabId) => {
-    const windowId = tabId ? (await chrome.tabs.get(tabId)).windowId : chrome.windows.WINDOW_ID_CURRENT;
-    chrome.tabs.captureVisibleTab(windowId, { format: "jpeg", quality: 80 }, (dataUrl) => {
-      if (chrome.runtime.lastError) {
-        ws?.send(JSON.stringify({ id, error: chrome.runtime.lastError.message }));
-      } else {
-        ws?.send(JSON.stringify({ id, result: dataUrl }));
-      }
-    });
+    let targetTabId = tabId;
+    if (!targetTabId) targetTabId = (await chrome.tabs.query({ active: true, currentWindow: true }))[0]?.id;
+    
+    if (!targetTabId) {
+      ws?.send(JSON.stringify({ id, error: "No active tab found" }));
+      return;
+    }
+
+    if (payload.fullPage || payload.clip) {
+      const debuggee = { tabId: targetTabId };
+      chrome.debugger.attach(debuggee, "1.3", () => {
+        if (chrome.runtime.lastError) {
+          ws?.send(JSON.stringify({ id, error: chrome.runtime.lastError.message }));
+          return;
+        }
+
+        chrome.debugger.sendCommand(debuggee, "Page.getLayoutMetrics", {}, (metrics: any) => {
+          if (chrome.runtime.lastError) {
+            chrome.debugger.detach(debuggee);
+            ws?.send(JSON.stringify({ id, error: chrome.runtime.lastError.message }));
+            return;
+          }
+
+          const contentSize = metrics.cssContentSize || metrics.contentSize;
+          if (!contentSize) {
+            chrome.debugger.detach(debuggee);
+            ws?.send(JSON.stringify({ id, error: "Failed to get layout metrics" }));
+            return;
+          }
+
+          let virtualHeight = contentSize.height;
+          let captureClip = {
+            x: 0,
+            y: 0,
+            width: contentSize.width,
+            height: Math.min(contentSize.height, 16384),
+            scale: 1
+          };
+
+          if (payload.clip) {
+            // If clip is provided, use exact clip region. 
+            // We still override virtualHeight to contentSize.height to prevent sticky headers from showing in the middle of the clip.
+            captureClip = { ...payload.clip, scale: payload.clip.scale || 1 };
+          } else {
+            // If just fullPage, we cap the virtual height to 16384 to match the clip height
+            virtualHeight = Math.min(contentSize.height, 16384);
+          }
+
+          chrome.debugger.sendCommand(debuggee, "Emulation.setDeviceMetricsOverride", {
+            mobile: false,
+            width: contentSize.width,
+            height: virtualHeight,
+            deviceScaleFactor: 0
+          }, () => {
+            setTimeout(() => {
+              chrome.debugger.sendCommand(debuggee, "Page.captureScreenshot", {
+                format: "jpeg",
+                quality: 80,
+                captureBeyondViewport: true,
+                clip: captureClip
+              }, (result: any) => {
+                const captureError = chrome.runtime.lastError ? chrome.runtime.lastError.message : null;
+                chrome.debugger.sendCommand(debuggee, "Emulation.clearDeviceMetricsOverride", {}, () => {
+                  chrome.debugger.detach(debuggee);
+                  if (captureError) {
+                    ws?.send(JSON.stringify({ id, error: captureError }));
+                  } else if (chrome.runtime.lastError) {
+                    ws?.send(JSON.stringify({ id, error: chrome.runtime.lastError.message }));
+                  } else if (!result || !result.data) {
+                    ws?.send(JSON.stringify({ id, error: "Screenshot failed: no data returned" }));
+                  } else {
+                    const dataUrl = `data:image/jpeg;base64,${result.data}`;
+                    ws?.send(JSON.stringify({ id, result: dataUrl }));
+                  }
+                });
+              });
+            }, 300); // Wait for relayout
+          });
+        });
+      });
+    } else {
+      const windowId = (await chrome.tabs.get(targetTabId)).windowId;
+      chrome.tabs.captureVisibleTab(windowId, { format: "jpeg", quality: 80 }, (dataUrl) => {
+        if (chrome.runtime.lastError) {
+          ws?.send(JSON.stringify({ id, error: chrome.runtime.lastError.message }));
+        } else {
+          ws?.send(JSON.stringify({ id, result: dataUrl }));
+        }
+      });
+    }
   },
   evaluate_js: async (payload, id, tabId) => {
     let targetTabId = tabId;

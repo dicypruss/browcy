@@ -3,7 +3,7 @@
   "name": "Browcy",
   "version": "1.0.0",
   "description": "Open Source MCP Browser Automation",
-  "permissions": ["activeTab", "scripting", "tabs", "storage"],
+  "permissions": ["activeTab", "scripting", "tabs", "storage", "debugger"],
   "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "src/popup.html"
@@ -15,6 +15,12 @@
     {
       "matches": ["<all_urls>"],
       "js": ["dist/content.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["dist/inject.js"],
+      "matches": ["<all_urls>"]
     }
   ]
 }

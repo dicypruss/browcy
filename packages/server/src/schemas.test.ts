@@ -3,7 +3,8 @@ import {
   NavigateSchema, 
   ClickSchema, 
   TypeSchema, 
-  CreateTabSchema 
+  CreateTabSchema,
+  ScreenshotSchema
 } from './schemas.js';
 
 describe('Zod Schemas', () => {
@@ -58,6 +59,21 @@ describe('Zod Schemas', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.active).toBe(false);
+      }
+    });
+  });
+
+  describe('ScreenshotSchema', () => {
+    it('should validate with no arguments', () => {
+      const result = ScreenshotSchema.safeParse({});
+      expect(result.success).toBe(true);
+    });
+
+    it('should allow optional fullPage flag', () => {
+      const result = ScreenshotSchema.safeParse({ fullPage: true });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.fullPage).toBe(true);
       }
     });
   });

@@ -4,7 +4,8 @@ export default defineConfig({
   entry: {
     background: "src/background.ts",
     content: "src/content.ts",
-    popup: "src/popup.ts"
+    popup: "src/popup.ts",
+    inject: "src/inject.ts"
   },
   format: ["iife"],
   outExtension() {

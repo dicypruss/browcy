@@ -44,6 +44,15 @@ export const CloseTabSchema = z.object({
 
 export const ScreenshotSchema = z.object({
   tabId: z.number().optional().describe("Optional ID of the tab. If omitted, uses active tab."),
+  fullPage: z.boolean().optional().describe("If true, captures the entire scrollable height of the page using Chrome DevTools Protocol. Defaults to false (viewport only)."),
+  savePath: z.string().optional().describe("Optional absolute path to save the screenshot file. If provided, the screenshot will be saved to disk instead of being returned as base64 in the chat."),
+  clip: z.object({
+    x: z.number(),
+    y: z.number(),
+    width: z.number(),
+    height: z.number(),
+    scale: z.number().optional()
+  }).optional().describe("Specify the region of the page to capture. Use this with browser_layout_info to capture chunks of very long pages. It is highly recommended to include a 10-20% overlap (нахлест) between chunks so that text or elements at the edges are not lost.")
 });
 
 export const GoBackSchema = z.object({
@@ -74,5 +83,9 @@ export const WaitForSchema = z.object({
 });
 
 export const GetConsoleLogsSchema = z.object({
+  tabId: z.number().optional().describe("Optional ID of the tab. If omitted, uses active tab."),
+});
+
+export const GetLayoutInfoSchema = z.object({
   tabId: z.number().optional().describe("Optional ID of the tab. If omitted, uses active tab."),
 });
