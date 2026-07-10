@@ -19,10 +19,10 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "ws": "^8.21.0",
     "zod": "^4.4.3",
-    "zod-to-json-schema": "^3.25.2",
-    "@browcy/shared": "*"
+    "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
+    "@browcy/shared": "*",
     "@types/node": "^26.1.1",
     "@types/ws": "^8.18.1",
     "tsup": "^8.5.1",
