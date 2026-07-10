@@ -8,12 +8,12 @@ function updateUI(status: string) {
 }
 
 chrome.storage.local.get(['connectionStatus'], (result) => {
-  updateUI(result.connectionStatus || 'disconnected');
+  updateUI((result.connectionStatus as string) || 'disconnected');
 });
 
 chrome.storage.onChanged.addListener((changes) => {
   if (changes.connectionStatus) {
-    updateUI(changes.connectionStatus.newValue);
+    updateUI(changes.connectionStatus.newValue as string);
   }
 });
 

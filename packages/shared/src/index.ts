@@ -16,6 +16,7 @@ export type BrowserRequest =
   | { action: "scroll"; payload: { direction?: "up" | "down" | "left" | "right"; amount?: number; selector?: string; tabId?: number } }
   | { action: "wait_for"; payload: { selector?: string; text?: string; timeoutMs?: number; tabId?: number } }
   | { action: "get_console_logs"; payload: { tabId?: number } }
+  | { action: "layout_info"; payload: { tabId?: number } }
   | { action: "ping"; payload?: never };
 
 export type BrowserResponse<T = any> = 

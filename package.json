@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "vitest run",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "tsc --noEmit -p packages/server/tsconfig.json && tsc --noEmit -p packages/extension/tsconfig.json",
+    "test": "npm run typecheck && vitest run",
     "test:watch": "vitest"
   },
   "keywords": [],

@@ -12,7 +12,7 @@ import { NavigateSchema, ClickSchema, TypeSchema, PressKeySchema, SnapshotSchema
 
 import http from "http";
 import { verifyWebSocketOrigin, verifyIpcHeader } from "./security.js";
-import { handleToolCall } from "./handlers.js";
+import { handleToolCall } from "./actions/index.js";
 import type { BrowserRequest, WSMessageResponse, WSMessageRequest } from "@browcy/shared";
 
 // --- Primary/Secondary Architecture Setup ---
@@ -160,87 +160,87 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: "browser_create_tab",
         description: "Open a new browser tab",
-        inputSchema: zodToJsonSchema(CreateTabSchema),
+        inputSchema: zodToJsonSchema(CreateTabSchema as any),
       },
       {
         name: "browser_switch_tab",
         description: "Switch to a specific tab (make it active)",
-        inputSchema: zodToJsonSchema(SwitchTabSchema),
+        inputSchema: zodToJsonSchema(SwitchTabSchema as any),
       },
       {
         name: "browser_close_tab",
         description: "Close a specific tab",
-        inputSchema: zodToJsonSchema(CloseTabSchema),
+        inputSchema: zodToJsonSchema(CloseTabSchema as any),
       },
       {
         name: "browser_navigate",
         description: "Navigate a tab to a specific URL",
-        inputSchema: zodToJsonSchema(NavigateSchema),
+        inputSchema: zodToJsonSchema(NavigateSchema as any),
       },
       {
         name: "browser_snapshot",
         description: "Capture the Accessibility Tree (ARIA Snapshot) of a tab",
-        inputSchema: zodToJsonSchema(SnapshotSchema),
+        inputSchema: zodToJsonSchema(SnapshotSchema as any),
       },
       {
         name: "browser_read_page",
         description: "Extract all visible text content from the page",
-        inputSchema: zodToJsonSchema(ReadPageSchema),
+        inputSchema: zodToJsonSchema(ReadPageSchema as any),
       },
       {
         name: "browser_click",
         description: "Click an element on the page",
-        inputSchema: zodToJsonSchema(ClickSchema),
+        inputSchema: zodToJsonSchema(ClickSchema as any),
       },
       {
         name: "browser_type",
         description: "Type text into an element on the page",
-        inputSchema: zodToJsonSchema(TypeSchema),
+        inputSchema: zodToJsonSchema(TypeSchema as any),
       },
       {
         name: "browser_press_key",
         description: "Simulate a physical key press in the browser",
-        inputSchema: zodToJsonSchema(PressKeySchema),
+        inputSchema: zodToJsonSchema(PressKeySchema as any),
       },
       {
         name: "browser_screenshot",
         description: "Capture a visual screenshot of the active tab (returns base64 encoded image)",
-        inputSchema: zodToJsonSchema(ScreenshotSchema),
+        inputSchema: zodToJsonSchema(ScreenshotSchema as any),
       },
       {
         name: "browser_go_back",
         description: "Navigate back in the tab's history",
-        inputSchema: zodToJsonSchema(GoBackSchema),
+        inputSchema: zodToJsonSchema(GoBackSchema as any),
       },
       {
         name: "browser_go_forward",
         description: "Navigate forward in the tab's history",
-        inputSchema: zodToJsonSchema(GoForwardSchema),
+        inputSchema: zodToJsonSchema(GoForwardSchema as any),
       },
       {
         name: "browser_evaluate_js",
         description: "Evaluate arbitrary JavaScript expression in the main page context",
-        inputSchema: zodToJsonSchema(EvaluateJsSchema),
+        inputSchema: zodToJsonSchema(EvaluateJsSchema as any),
       },
       {
         name: "browser_scroll",
         description: "Scroll the page in a given direction or scroll a specific element into view",
-        inputSchema: zodToJsonSchema(ScrollSchema),
+        inputSchema: zodToJsonSchema(ScrollSchema as any),
       },
       {
         name: "browser_wait_for",
         description: "Wait for a specific element (selector) or text to appear on the page",
-        inputSchema: zodToJsonSchema(WaitForSchema),
+        inputSchema: zodToJsonSchema(WaitForSchema as any),
       },
       {
         name: "browser_get_console_logs",
         description: "Retrieve intercepted console logs and errors from the page",
-        inputSchema: zodToJsonSchema(GetConsoleLogsSchema),
+        inputSchema: zodToJsonSchema(GetConsoleLogsSchema as any),
       },
       {
         name: "browser_layout_info",
         description: "Get layout metrics including full scrollable content size and viewport size. Useful for determining how to capture chunks of very long pages. When calculating chunks, always include a 10-20% vertical overlap to prevent losing content at the seams.",
-        inputSchema: zodToJsonSchema(GetLayoutInfoSchema),
+        inputSchema: zodToJsonSchema(GetLayoutInfoSchema as any),
       },
     ],
   };

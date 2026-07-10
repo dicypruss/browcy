@@ -1,3 +1,11 @@
+export {};
+
+declare global {
+  interface Window {
+    __browcyLogs: any[];
+  }
+}
+
 window.__browcyLogs = [];
 const originalLog = console.log;
 const originalError = console.error;

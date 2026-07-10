@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { handleToolCall } from './handlers.js';
+import { handleToolCall } from './index.js';
 import type { BrowserRequest } from '@browcy/shared';
 
 describe('handleToolCall', () => {
