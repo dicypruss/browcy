@@ -9,17 +9,17 @@ function updateStatus(status: 'connected' | 'disconnected' | 'connecting') {
   if (status === 'connected') {
     chrome.action.setIcon({
       path: {
-        "16": "icons/icon_16_connected.png",
-        "48": "icons/icon_48_connected.png",
-        "128": "icons/icon_128_connected.png"
+        "16": "/icons/icon_16_connected.png",
+        "48": "/icons/icon_48_connected.png",
+        "128": "/icons/icon_128_connected.png"
       }
     });
   } else {
     chrome.action.setIcon({
       path: {
-        "16": "icons/icon_16.png",
-        "48": "icons/icon_48.png",
-        "128": "icons/icon_128.png"
+        "16": "/icons/icon_16.png",
+        "48": "/icons/icon_48.png",
+        "128": "/icons/icon_128.png"
       }
     });
   }

@@ -8,7 +8,8 @@ const __dirname = path.dirname(__filename);
 
 const rootDir = path.resolve(__dirname, '..');
 const buildDir = path.resolve(rootDir, 'build');
-const zipPath = path.resolve(rootDir, 'browcy-extension-v0.0.1.zip');
+const pkg = JSON.parse(fs.readFileSync(path.resolve(rootDir, 'package.json'), 'utf-8'));
+const zipPath = path.resolve(rootDir, `browcy-extension-v${pkg.version}.zip`);
 
 // Clean and create build directory
 if (fs.existsSync(buildDir)) {
