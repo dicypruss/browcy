@@ -1,6 +1,6 @@
 {
   "name": "browcy-mcp",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "An MCP Server for controlling Chrome browsers via DevTools Protocol",
   "main": "index.js",
   "type": "module",
