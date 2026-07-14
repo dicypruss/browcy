@@ -280,6 +280,8 @@ async function main() {
   };
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
+  process.stdin.on('close', shutdown);
+  process.stdin.on('end', shutdown);
 }
 
 main().catch(console.error);
