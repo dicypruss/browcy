@@ -1,12 +1,18 @@
 import type { WSMessageRequest, WSMessageResponse } from "@browcy/shared";
-let ws: WebSocket | null = null;
-const WS_URL = "ws://localhost:8765";
+import { actionHandlers } from "./actions/index.js";
+
+const WS_PORT_START = 8765;
+const WS_PORT_END = 8775;
+const activeSockets = new Map<number, WebSocket>();
 let pingInterval: any = null;
 
-function updateStatus(status: 'connected' | 'disconnected' | 'connecting') {
-  chrome.storage.local.set({ connectionStatus: status });
+function updateStatus() {
+  const activePorts = Array.from(activeSockets.entries())
+    .filter(([_, ws]) => ws.readyState === WebSocket.OPEN)
+    .map(([port]) => port);
+  chrome.storage.local.set({ activePorts });
   
-  if (status === 'connected') {
+  if (activePorts.length > 0) {
     chrome.action.setIcon({
       path: {
         "16": "/icons/icon_16_connected.png",
@@ -25,9 +31,7 @@ function updateStatus(status: 'connected' | 'disconnected' | 'connecting') {
   }
 }
 
-import { actionHandlers } from "./actions/index.js";
-
-async function forwardToContentScript(action: string, payload: any, id: number, tabId?: number) {
+async function forwardToContentScript(action: string, payload: any, id: number, sendResponse: (data: any) => void, tabId?: number) {
   let targetTabId = tabId;
   if (!targetTabId) {
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -37,76 +41,81 @@ async function forwardToContentScript(action: string, payload: any, id: number, 
   if (targetTabId) {
     chrome.tabs.sendMessage(targetTabId, { action, payload }, (response) => {
       if (chrome.runtime.lastError) {
-         ws?.send(JSON.stringify({ id, error: chrome.runtime.lastError.message }));
+         sendResponse({ id, error: chrome.runtime.lastError.message });
          return;
       }
       if (!response?.success) {
-         ws?.send(JSON.stringify({ id, error: response?.error || "Unknown error from content script" }));
+         sendResponse({ id, error: response?.error || "Unknown error from content script" });
       } else {
-         ws?.send(JSON.stringify({ id, result: response.result }));
+         sendResponse({ id, result: response.result });
       }
     });
   } else {
-    ws?.send(JSON.stringify({ id, error: "No active tab found" }));
+    sendResponse({ id, error: "No active tab found" });
   }
 }
 
-function connect() {
-  if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) {
-    return;
-  }
+function connectToPort(port: number) {
+  if (activeSockets.has(port)) return;
   
-  updateStatus('connecting');
-  console.log("Connecting to Browcy MCP Server...");
-  ws = new WebSocket(WS_URL);
-
+  const ws = new WebSocket(`ws://localhost:${port}`);
+  activeSockets.set(port, ws);
+  
   ws.onopen = () => {
-    console.log("Connected to Browcy MCP Server");
-    updateStatus('connected');
-    
-    if (pingInterval) clearInterval(pingInterval);
-    pingInterval = setInterval(() => {
-      if (ws?.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ action: "ping" }));
-      }
-    }, 20000);
+    console.log(`Connected to Browcy MCP Server on port ${port}`);
+    updateStatus();
   };
 
   ws.onmessage = async (event) => {
     try {
       const request = JSON.parse(event.data) as WSMessageRequest;
-      const { id, action, payload } = request;
-      if (!id) return; // ignore simple acks
-      console.log(`Received command from server: ${action}`, payload);
+      const { action, payload } = request;
+      const id = request.id ?? -1;
+      if (id === -1 && action !== 'system_connect_port') return; // ignore simple acks
+      console.log(`[Port ${port}] Received command: ${action}`, payload);
       
+      if ((action as string) === 'system_connect_port') {
+        connectToPort((payload as any).port);
+        return;
+      }
+
       const tabId = (payload as any)?.tabId;
 
       const sendResponse = (data: any) => {
-        ws?.send(JSON.stringify(data));
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify(data));
+        }
       };
 
       const handler = actionHandlers[action];
       if (handler) {
         await handler(payload, id, sendResponse, tabId);
       } else {
-        await forwardToContentScript(action, payload, id, tabId);
+        await forwardToContentScript(action, payload, id, sendResponse, tabId);
       }
     } catch (e: any) {
-      console.error("Error processing message", e);
+      console.error(`Error processing message on port ${port}`, e);
     }
   };
 
   ws.onclose = () => {
-    console.log("Disconnected. Reconnecting in 3s...");
-    updateStatus('disconnected');
-    if (pingInterval) clearInterval(pingInterval);
-    setTimeout(connect, 3000);
+    if (activeSockets.get(port) === ws) {
+      activeSockets.delete(port);
+      updateStatus();
+    }
   };
   
   ws.onerror = (e) => {
-    console.error("WebSocket error:", e);
-    ws?.close();
+    // onclose will be triggered immediately after
   };
+}
+
+function ensurePrimaryConnection() {
+  const ws = activeSockets.get(WS_PORT_START);
+  if (!ws || (ws.readyState !== WebSocket.CONNECTING && ws.readyState !== WebSocket.OPEN)) {
+    if (ws) activeSockets.delete(WS_PORT_START);
+    connectToPort(WS_PORT_START);
+  }
 }
 
 // Global listener for debugger detaching unexpectedly
@@ -117,14 +126,26 @@ chrome.debugger.onDetach.addListener((source, reason) => {
 // Listen for manual reconnect requests from Popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "reconnect") {
-    if (ws) {
-      ws.close(); // will trigger reconnect logic automatically
-    } else {
-      connect();
+    for (const ws of activeSockets.values()) {
+      ws.close();
     }
+    activeSockets.clear();
+    updateStatus();
+    ensurePrimaryConnection();
     sendResponse({ result: "reconnecting" });
   }
 });
 
-// Start connection loop
-connect();
+// Start connection loop (only checking the primary port)
+setInterval(ensurePrimaryConnection, 3000);
+ensurePrimaryConnection();
+
+// Ping all active connections to keep them alive
+if (pingInterval) clearInterval(pingInterval);
+pingInterval = setInterval(() => {
+  for (const ws of activeSockets.values()) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ action: "ping" }));
+    }
+  }
+}, 20000);

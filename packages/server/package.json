@@ -12,7 +12,14 @@
     "start": "node dist/index.js",
     "test": "vitest run"
   },
-  "keywords": ["mcp", "browser", "automation", "chrome", "devtools", "ai"],
+  "keywords": [
+    "mcp",
+    "browser",
+    "automation",
+    "chrome",
+    "devtools",
+    "ai"
+  ],
   "author": "dicypruss",
   "license": "ISC",
   "dependencies": {
@@ -25,6 +32,7 @@
     "@browcy/shared": "*",
     "@types/node": "^26.1.1",
     "@types/ws": "^8.18.1",
+    "@vitest/coverage-v8": "^4.1.10",
     "tsup": "^8.5.1",
     "typescript": "^6.0.3"
   }

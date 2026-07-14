@@ -15,62 +15,36 @@ import { verifyWebSocketOrigin, verifyIpcHeader } from "./security.js";
 import { handleToolCall } from "./actions/index.js";
 import type { BrowserRequest, WSMessageResponse, WSMessageRequest } from "@browcy/shared";
 
-// --- Primary/Secondary Architecture Setup ---
-const WS_PORT = 8765;
-let isPrimary = false;
+import { AgentMultiplexer } from "./multiplexer.js";
 
-let activeClient: WebSocket | null = null;
+// --- Multi-Agent Architecture Setup ---
+const WS_PORT_START = 8765;
+const multiplexer = new AgentMultiplexer({ basePort: WS_PORT_START, maxPorts: 10 });
+
 let requestCounter = 0;
 const pendingRequests = new Map<
   number,
   { resolve: (value: any) => void; reject: (reason?: any) => void }
 >();
 
-// HTTP Server acts as both WebSocket server (for extension) 
-// and IPC API (for secondary MCP instances)
-const httpServer = http.createServer((req, res) => {
-  if (req.method === 'POST' && req.url === '/action') {
-    if (!verifyIpcHeader(req.headers['x-browcy-ipc'])) {
-      res.writeHead(403, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, error: "Forbidden: Missing X-Browcy-IPC header (CSRF Protection)" }));
-      return;
-    }
-    let body = '';
-    req.on('data', chunk => body += chunk.toString());
-    req.on('end', async () => {
-      try {
-        const request = JSON.parse(body) as BrowserRequest;
-        const result = await sendToBrowser(request);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, result }));
-      } catch (err: any) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, error: err.message }));
-      }
-    });
-  } else {
-    res.writeHead(404);
-    res.end();
-  }
-});
-
 const wss = new WebSocketServer({ noServer: true });
 
-httpServer.on('upgrade', (request, socket, head) => {
+multiplexer.getServer().on('upgrade', (request, socket, head) => {
   const origin = request.headers.origin;
   if (!verifyWebSocketOrigin(origin)) {
     console.error(`Blocked WS connection from unauthorized origin: ${origin || 'undefined'}`);
     socket.destroy();
     return;
   }
-  wss.handleUpgrade(request, socket, head, (ws) => {
+  wss.handleUpgrade(request, socket as any, head, (ws) => {
     wss.emit('connection', ws, request);
   });
 });
 
 wss.on("connection", (ws) => {
-  console.error("Browser extension connected to Primary node!");
-  activeClient = ws;
+  const isMaster = multiplexer.isMaster();
+  console.error(`Browser extension connected to ${isMaster ? 'Master' : 'Secondary'} node on port ${multiplexer.getPort()}!`);
+  multiplexer.setActiveClient(ws);
 
   ws.on("message", (message) => {
     try {
@@ -91,41 +65,27 @@ wss.on("connection", (ws) => {
 
   ws.on("close", () => {
     console.error("Browser extension disconnected.");
-    if (activeClient === ws) {
-      activeClient = null;
-    }
+    multiplexer.setActiveClient(null);
   });
 });
 
 async function sendToBrowser(request: BrowserRequest): Promise<any> {
-  if (!isPrimary) {
-    // Secondary instance: Forward request to Primary instance
-    try {
-      const response = await fetch(`http://localhost:${WS_PORT}/action`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'X-Browcy-IPC': 'true'
-        },
-        body: JSON.stringify(request)
-      });
-      const data = await response.json();
-      if (!data.success) throw new Error(data.error);
-      return data.result;
-    } catch (err: any) {
-      throw new Error(`IPC to Primary node failed: ${err.message}`);
-    }
+  const currentPort = multiplexer.getPort();
+  if (wss.clients.size === 0) {
+    throw new Error(`No active browser connection on port ${currentPort}. Please open the Browcy extension.`);
+  }
+  
+  // Get the first (and only) active client
+  const activeClient = Array.from(wss.clients)[0];
+  if (activeClient.readyState !== WebSocket.OPEN) {
+    throw new Error(`Browser connection on port ${currentPort} is not open.`);
   }
 
-  // Primary instance: Send directly to extension
-  if (!activeClient || activeClient.readyState !== WebSocket.OPEN) {
-    throw new Error("No active browser connection. Please open the Browcy extension.");
-  }
   const id = ++requestCounter;
   return new Promise((resolve, reject) => {
     pendingRequests.set(id, { resolve, reject });
     const wsReq: WSMessageRequest = { ...request, id };
-    activeClient!.send(JSON.stringify(wsReq));
+    activeClient.send(JSON.stringify(wsReq));
     
     setTimeout(() => {
       if (pendingRequests.has(id)) {
@@ -256,25 +216,18 @@ async function main() {
   await server.connect(transport);
   console.error("Browcy MCP Server running on stdio");
   
-  // Try to become Primary
-  httpServer.listen(WS_PORT, '127.0.0.1', () => {
-    isPrimary = true;
-    console.error(`Primary node started. WebSocket and IPC bridge listening on 127.0.0.1:${WS_PORT}`);
-  });
+  try {
+    const result = await multiplexer.start();
+    console.error(`Browcy MCP node started. WebSocket listening on 127.0.0.1:${result.port} (${result.isMaster ? 'Master' : 'Secondary'})`);
+  } catch (err: any) {
+    console.error(err.message);
+    process.exit(1);
+  }
 
-  httpServer.on('error', (e: any) => {
-    if (e.code === 'EADDRINUSE') {
-      isPrimary = false;
-      console.error(`Port ${WS_PORT} in use. Running as Secondary Proxy node.`);
-    } else {
-      console.error("HTTP Server Error", e);
-    }
-  });
-
-  // Graceful shutdown to release port 8765
+  // Graceful shutdown to release port
   const shutdown = () => {
     console.error("Shutting down MCP server...");
-    httpServer.close();
+    multiplexer.getServer().close();
     wss.close();
     process.exit(0);
   };
