@@ -1,4 +1,3 @@
-// Browcy Content Script
 import { actionHandlers } from './dom.js';
 // Inject a script into the MAIN world to intercept console logs
 (() => {

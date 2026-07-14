@@ -54,6 +54,10 @@ export class AgentMultiplexer {
     return this.httpServer;
   }
 
+  public getActiveClient(): WebSocket | null {
+    return this.activeClient;
+  }
+
   public getPort(): number | null {
     return this.currentPort;
   }

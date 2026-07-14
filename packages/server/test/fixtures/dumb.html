@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dumb Page for E2E</title>
+</head>
+<body>
+  <h1>Test Page</h1>
+  <button id="test-btn">Click me</button>
+  <div id="output"></div>
+  <script>
+    document.getElementById('test-btn').addEventListener('click', () => {
+      document.getElementById('output').textContent = 'Button was clicked!';
+    });
+  </script>
+</body>
+</html>

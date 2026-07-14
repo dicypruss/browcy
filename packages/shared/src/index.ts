@@ -23,6 +23,9 @@ export type BrowserResponse<T = any> =
   | { success: true; result: T }
   | { success: false; error: string };
 
+export type SystemRequest =
+  | { action: "system_connect_port"; payload: { port: number } };
+
 // Utility type for WebSocket Message envelope
-export type WSMessageRequest = BrowserRequest & { id?: number };
+export type WSMessageRequest = (BrowserRequest | SystemRequest) & { id?: number };
 export type WSMessageResponse = { id: number } & ({ result: any } | { error: string });

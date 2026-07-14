@@ -58,7 +58,7 @@ async function forwardToContentScript(action: string, payload: any, id: number, 
 function connectToPort(port: number) {
   if (activeSockets.has(port)) return;
   
-  const ws = new WebSocket(`ws://localhost:${port}`);
+  const ws = new WebSocket(`ws://127.0.0.1:${port}`);
   activeSockets.set(port, ws);
   
   ws.onopen = () => {
@@ -74,8 +74,8 @@ function connectToPort(port: number) {
       if (id === -1 && action !== 'system_connect_port') return; // ignore simple acks
       console.log(`[Port ${port}] Received command: ${action}`, payload);
       
-      if ((action as string) === 'system_connect_port') {
-        connectToPort((payload as any).port);
+      if (action === 'system_connect_port') {
+        connectToPort(payload.port);
         return;
       }
 
