@@ -1,6 +1,6 @@
 {
   "name": "@browcy/extension",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Chrome extension for Browcy MCP",
   "main": "index.js",
   "type": "module",

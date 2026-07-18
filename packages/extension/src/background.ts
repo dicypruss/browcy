@@ -1,13 +1,14 @@
 import type { WSMessageRequest, WSMessageResponse } from "@browcy/shared";
 import { actionHandlers } from "./actions/index.js";
+import { ConnectionManager } from "./connectionManager.js";
 
 const WS_PORT_START = 8765;
 const WS_PORT_END = 8775;
-const activeSockets = new Map<number, WebSocket>();
+export const connectionManager = new ConnectionManager();
 let pingInterval: any = null;
 
 function updateStatus() {
-  const activePorts = Array.from(activeSockets.entries())
+  const activePorts = Array.from(connectionManager.activeSockets.entries())
     .filter(([_, ws]) => ws.readyState === WebSocket.OPEN)
     .map(([port]) => port);
   chrome.storage.local.set({ activePorts });
@@ -56,10 +57,10 @@ async function forwardToContentScript(action: string, payload: any, id: number, 
 }
 
 function connectToPort(port: number) {
-  if (activeSockets.has(port)) return;
+  if (connectionManager.activeSockets.has(port)) return;
   
   const ws = new WebSocket(`ws://127.0.0.1:${port}`);
-  activeSockets.set(port, ws);
+  connectionManager.activeSockets.set(port, ws);
   
   ws.onopen = () => {
     console.log(`Connected to Browcy MCP Server on port ${port}`);
@@ -99,8 +100,8 @@ function connectToPort(port: number) {
   };
 
   ws.onclose = () => {
-    if (activeSockets.get(port) === ws) {
-      activeSockets.delete(port);
+    if (connectionManager.activeSockets.get(port) === ws) {
+      connectionManager.activeSockets.delete(port);
       updateStatus();
     }
   };
@@ -111,11 +112,7 @@ function connectToPort(port: number) {
 }
 
 function ensurePrimaryConnection() {
-  const ws = activeSockets.get(WS_PORT_START);
-  if (!ws || (ws.readyState !== WebSocket.CONNECTING && ws.readyState !== WebSocket.OPEN)) {
-    if (ws) activeSockets.delete(WS_PORT_START);
-    connectToPort(WS_PORT_START);
-  }
+  connectionManager.ensureConnections(WS_PORT_START, WS_PORT_END, connectToPort);
 }
 
 // Global listener for debugger detaching unexpectedly
@@ -126,10 +123,10 @@ chrome.debugger.onDetach.addListener((source, reason) => {
 // Listen for manual reconnect requests from Popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "reconnect") {
-    for (const ws of activeSockets.values()) {
+    for (const ws of connectionManager.activeSockets.values()) {
       ws.close();
     }
-    activeSockets.clear();
+    connectionManager.activeSockets.clear();
     updateStatus();
     ensurePrimaryConnection();
     sendResponse({ result: "reconnecting" });
@@ -143,7 +140,7 @@ ensurePrimaryConnection();
 // Ping all active connections to keep them alive
 if (pingInterval) clearInterval(pingInterval);
 pingInterval = setInterval(() => {
-  for (const ws of activeSockets.values()) {
+  for (const ws of connectionManager.activeSockets.values()) {
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ action: "ping" }));
     }
